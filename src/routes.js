@@ -196,7 +196,33 @@ export function loadPlanFromJSON(planRecord) {
     });
 }
 
+function _loadPlanFromCSV(assignment) {
+    // 
+}
+
+/**
+ * 
+ * @param {String} assignmentList Delimited 
+ * @param {*} state 
+ */
 export function loadPlanFromCSV(assignmentList, state) {
+    // Request parameters.
+    let URL = "https://gvd4917837.execute-api.us-east-1.amazonaws.com/loadPlanFromCSV",
+        params = {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            "body": assignmentList
+        };
+
+    fetch(URL, params)
+        .then(r => r.json())
+        .then(body => {
+            // De-structure the assignment and numberOfParts.
+            let { assignment, numberOfParts } = body;
+        });
+    /*
     let rows = assignmentList.trim().split("\n");
     let headers = rows[0].replace(/"/g, "").trim().split(",");
     if (
@@ -276,6 +302,7 @@ export function loadPlanFromCSV(assignmentList, state) {
             place
         };
     });
+    */
 }
 
 export function loadPlanFromURL(url) {

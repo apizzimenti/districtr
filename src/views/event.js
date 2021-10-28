@@ -325,7 +325,7 @@ const unitTypes = {
   sonomaco: {no: 'Blocks'},
   poway2021: {no: 'Blocks'},
   torrance2021: {no: 'Blocks'},
-
+  
 };
 
 const unitCounts = {

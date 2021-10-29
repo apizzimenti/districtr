@@ -1,5 +1,6 @@
 import { listPlaces } from "./api/mockApi";
 import { spatial_abilities } from "./utils";
+import { renderModal } from "./components/Modal";
 
 const routes = {
     "/": "/",
@@ -206,7 +207,7 @@ function _loadPlanFromCSV(assignment) {
  * @param {*} state 
  */
 export function loadPlanFromCSV(assignmentList, state) {
-    // Request parameters.
+    // Request parameters and base error text.
     let URL = "https://gvd4917837.execute-api.us-east-1.amazonaws.com/loadPlanFromCSV",
         params = {
             method: "POST",
@@ -214,95 +215,36 @@ export function loadPlanFromCSV(assignmentList, state) {
                 "Content-Type": "application/json"
             },
             "body": assignmentList
-        };
+        },
+        baseErrorText = `The uploaded CSV assignment and districtr module (state, \
+            region, or legislative chamber) are incompatible. `,
+        place;
 
-    fetch(URL, params)
+    // Send the request to lambda.
+    return fetch(URL, params)
         .then(r => r.json())
         .then(body => {
             // De-structure the assignment and numberOfParts.
             let { assignment, numberOfParts } = body;
-        });
-    /*
-    let rows = assignmentList.trim().split("\n");
-    let headers = rows[0].replace(/"/g, "").trim().split(",");
-    if (
-        headers[0].indexOf("id-") === 0
-        && headers[0].split("-").length === 5
-    ) {
-        // new format, verify units match
-        //id-state.place.id-state.units.id
-        let cols = headers[0].split("-");
-        let placeId = cols[1],
-            unitId = cols[2],
-            partCount = cols[3],
-            pluralType = cols[4];
-        if (unitId.includes("_")) {
-            unitId = unitId.split("_").slice(-1)[0];
-        }
 
-        if (placeId !== state.place.id) {
-            throw new Error("CSV is for a different module (another state or region).");
-        } else if (unitId !== state.units.id.split("_").slice(-1)[0]) {
-            throw new Error("CSV is for this module but a different unit map (e.g. blocks, precincts).");
-        }
-        // else if (pluralType !== state.problem.pluralNoun.replace(/\s+/g, "")) {
-        //     throw new Error("CSV is for this module but a different division map (e.g. districts)");
-        // }
-        state.problem.numberOfParts = partCount * 1;
-    } else if (!headers[1].match(/\d/) && headers[1].length !== 1) {
-        // Sept 2021 fix, no numbers in first line = useless header
-        console.log("custom header");
-    } else {
-        // old format, no column headers
-        headers = null;
-    }
-    let planRecord = state;
-    planRecord.assignment = {};
-
-    const delimiter = (state.place.id === "louisiana") ? ";" : ",";
-
-    let districtIds = new Set(rows.slice(1).map((row, index) => row.split(delimiter)[1].split("_")[0] ));
-    if (headers) {districtIds.delete(rows[0].split(delimiter)[1]);}
-    districtIds.delete(undefined);
-
-    let distMap = Array.from(districtIds.values());
-    (!isNaN(distMap[0] - distMap[1])) ? distMap.sort((a, b) => a - b) : distMap.sort();
-
-    // if we didn't set numberOfParts in CSV, find max here
-    state.problem.numberOfParts =  Math.max(state.problem.numberOfParts, distMap.length)
-
-    if (state.place.id === "nc") {
-        state.place.id = "northcarolina";
-    }
-    return listPlaces(state.place.id, state.place.state).then(places => {
-        rows.forEach((row, index) => {
-            if (index > 0 || !headers) {
-                let cols = row.split(delimiter),
-                    val = cols[1].split("_"),
-                    key = (isNaN(cols[0] * 1) || cols[0].match(/[^0-9]/) || cols[0][0] === "0")
-                        ? cols[0]
-                        : cols[0] * 1;
-                if (!cols[1].match(/\d/) && cols[1].length !== 1) {
-                    console.log("no assigned value in row " + index);
-                    return;
-                }
-                if (typeof(key) === "string" && (key.includes("\""))) {
-                    key = key.slice(1, -1);
-                }
-
-                if (key && val !== undefined) {
-                    planRecord.assignment[key] = [];
-                    val.forEach(v => planRecord.assignment[key].push(distMap.indexOf(v)));
-                }
+            // First, check whether there's the right number of districts. If
+            // the CSV specifies more districts than the module requires, we
+            // warn the user and abort the operation.
+            if (state.problem.numberOfParts < numberOfParts) {
+                renderModal(
+                    `${baseErrorText} The ${state.place.state} ${state.problem.name} \
+                    module can have at most ${state.problem.numberOfParts} districts, \
+                    but the CSV assignment specifies ${numberOfParts} districts.`
+                );
+                throw new Error(`"CSV assignment and ${state.id} are incompatible.`);
             }
+
+            // Next, attempt to assign units.
+            state.assignment = assignment;
+            place = state.place;
+
+            return { ...state, place };
         });
-        const place = places.find(p => p.id === planRecord.place.id);
-        return {
-            ...planRecord,
-            place
-        };
-    });
-    */
 }
 
 export function loadPlanFromURL(url) {
